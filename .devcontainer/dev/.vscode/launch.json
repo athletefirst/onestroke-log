@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information visit:
+    // https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Serve",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "http.server",
+            "args": [
+                "8000"
+            ],
+            "cwd": "${workspaceFolder}/code/_site",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Build and Serve",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "http.server",
+            "args": [
+                "8010"
+            ],
+            "cwd": "${workspaceFolder}/code/_site",
+            "console": "integratedTerminal",
+            "preLaunchTask": "build pages"
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "edit pages",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "marimo",
+                "edit"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/code/pages"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "build pages",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "../.github/scripts/build.py",
+                "--output_dir",
+                "${workspaceFolder}/code/_site",
+                "--template",
+                "${workspaceFolder}/code/.github/templates/tailwind.html.j2"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/code/pages"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+    ]
+}

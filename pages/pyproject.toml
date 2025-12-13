@@ -1,0 +1,16 @@
+[project]
+name = "onestroke-log-pages"
+version = "0.1.0"
+description = "marimo notebooks for visualizing OneStroke logs"
+requires-python = ">=3.10"
+dependencies = [
+    "altair",
+    "numpy",
+    "pandas",
+    "polars",
+    "pyarrow",
+    "vega_datasets",
+]
+
+[tool.marimo.runtime]
+pythonpath = ["../src"]
