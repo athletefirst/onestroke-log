@@ -20,6 +20,23 @@ with app.setup:
 
     file = mo.notebook_location() / "public" / "penguins.csv"
 
+    import requests
+    from io import StringIO
+    import os
+
+    def safe_read_csv(path_or_url: str, **kwargs) -> pd.DataFrame:
+        print(f"[safe_read_csv] path_or_url = {path_or_url}")
+        if path_or_url.startswith("http://") or path_or_url.startswith("https://"):
+            resp = requests.get(path_or_url)
+            resp.raise_for_status()
+            return pd.read_csv(StringIO(resp.text), **kwargs)
+        else:
+            if not os.path.exists(path_or_url):
+                raise FileNotFoundError(f"File not found: {path_or_url}")
+            return pd.read_csv(path_or_url, **kwargs)
+
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(
@@ -42,7 +59,9 @@ def _():
 @app.cell
 def _():
     # Try to avoid reading the file with pandas
-    _df = pd.read_csv(str(file))
+    # _df = pd.read_csv(str(file))
+    _df = safe_read_csv(str(file))
+    _df.head()
     return
 
 @app.cell
