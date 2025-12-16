@@ -43,7 +43,19 @@ def _(file_area, mo):
 
 
 @app.cell
-def _(TAG_COLUMNS, TARGET_TAGS, csv, defaultdict, file_area, io, mo, np, pd):
+def _(
+    TAG_COLUMNS,
+    TAG_DTYPES,
+    TARGET_TAGS,
+    clean_for_dtypes,
+    csv,
+    defaultdict,
+    file_area,
+    io,
+    mo,
+    np,
+    pd,
+):
     mo.stop(not file_area.value, mo.md("Upload the log file."))
 
     file_bytes = file_area.contents()
@@ -66,9 +78,13 @@ def _(TAG_COLUMNS, TARGET_TAGS, csv, defaultdict, file_area, io, mo, np, pd):
     dfs = {}
     for tag, rows in grouped.items():
         df = pd.DataFrame(rows)
-
+    
         if tag in TAG_COLUMNS:
             df.columns = TAG_COLUMNS[tag][:df.shape[1]]
+
+        if tag in TAG_DTYPES:
+            df = clean_for_dtypes(df, TAG_DTYPES[tag])
+            # df = df.astype(TAG_DTYPES[tag])
 
         dfs[tag] = df
     return dfs, timestamps_ns
@@ -76,14 +92,10 @@ def _(TAG_COLUMNS, TARGET_TAGS, csv, defaultdict, file_area, io, mo, np, pd):
 
 @app.cell
 def _(dfs, mo, timestamps_ns):
-    dfs["AMD"]["timestamp"] = dfs["AMD"]["timestamp"].astype("int")
-    dfs["AMD"]["ax"] = dfs["AMD"]["ax"].astype("float")
-    dfs["AMD"]["ay"] = dfs["AMD"]["ay"].astype("float")
-    dfs["AMD"]["az"] = dfs["AMD"]["az"].astype("float")
     mo.vstack([
         timestamps_ns.min(),
         timestamps_ns.max(),
-        (timestamps_ns.max()-timestamps_ns.min())/1000000000/60,
+       int( (timestamps_ns.max()-timestamps_ns.min())/1000000000/60 ),
         dfs["AMD"]
     ])
     return
@@ -119,12 +131,15 @@ def _(dfs, mo, plt, start_slider, timestamps_ns, width_slider):
     # Filter data for the selected time window
     amd_df = dfs["AMD"]
     accel_window = amd_df[(amd_df['timestamp'] >= start_time) & (amd_df['timestamp'] <= end_time)]
+    acy_df = dfs["SCY"]
+    amplitude_window = acy_df[(acy_df['timestamp'] >= start_time) & (acy_df['timestamp'] <= end_time)]
     # status_window = status_df[(status_df['Time_ns'] >= start_time) & (status_df['Time_ns'] <= end_time)]
 
     plt.figure(figsize=(10, 6))
-    plt.plot(accel_window['timestamp'], accel_window['ax'], label='ax', color='tab:red')
-    plt.plot(accel_window['timestamp'], accel_window['ay'], label='ay', color='tab:green')
-    plt.plot(accel_window['timestamp'], accel_window['az'], label='az', color='tab:blue')
+    plt.plot(accel_window['timestamp'], accel_window['accelX'], label='accelX', color='tab:red')
+    plt.plot(accel_window['timestamp'], accel_window['accelY'], label='accelY', color='tab:green')
+    plt.plot(accel_window['timestamp'], accel_window['accelZ'], label='accelZ', color='tab:blue')
+    plt.plot(amplitude_window['timestamp'], amplitude_window['maxAmplitude'], label='maxAmplitude', color='tab:gray')
     # plt.step(status_window['Time_ns'], status_window['Status'], label='Status', color='tab:orange', where='mid')
     plt.xlabel('Elapsed Time (ns)')
     plt.ylabel('Value')
@@ -154,18 +169,100 @@ def _():
     import numpy as np
     import matplotlib.pyplot as plt
 
-    TAG_COLUMNS = {
-        "ACT": ["tag", "timestamp", "value", "datetime"],
-        "DBG": ["tag", "timestamp", "info", "datetime_tz"],
-        "AMD": ["tag", "timestamp", "ax", "ay", "az",
-                "qx", "qy", "qz", "qw", "counter", "status"],
-        "SCY": ["tag", "timestamp", "event", "value"],
-        "TRP": ["tag", "timestamp", "type", "end_ts", "count",
-                "v1", "v2", "lat", "lon", "score", "a", "b", "c", "flag"],
+    # FutureWarning: Downcasting behavior in replace is deprecated
+    # and will be removed in a future version. To retain the old
+    # behavior, explicitly call result.infer_objects(copy=False).
+    # To opt-in to the future behavior,
+    # set pd.set_option('future.no_silent_downcasting', True)
+    pd.set_option('future.no_silent_downcasting', True)
+
+    def clean_for_dtypes(df, dtypes):
+        for col, dtype in dtypes.items():
+            if col not in df.columns:
+                continue
+        
+            df[col] = df[col].replace("", np.nan)
+
+            # --- float ---
+            if dtype.startswith("float"):
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            # --- int ---
+            elif dtype.startswith("int"):
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+            
+            # --- bool ---
+            elif dtype == "bool":
+                df[col] = df[col].map({"true": True, "false": False, True: True, False: False})
+
+            # --- string ---
+            elif dtype == "string":
+                df[col] = df[col].astype("string")
+
+        return df
+
+    TAG_DTYPES = {
+        "ACT": {
+            "tag": "string", "timestamp": "int64",
+            "startTimeMillis": "int64",
+            "activityName": "string"
+        },
+        "DBG": {
+            "tag": "string", "timestamp": "int64",
+            "dbgTag": "string",
+            "strings": "string"
+        },
+        "AMD": {
+            "tag": "string", "timestamp": "int64",
+            "accelX": "float64",
+            "accelY": "float64",
+            "accelZ": "float64",
+            "qw": "float64",
+            "qx": "float64",
+            "qy": "float64",
+            "qz": "float64",
+            "aCounter": "int64",
+            "qCounter": "int64"
+        },
+        "SCY": {
+            "tag": "string", "timestamp": "int64",
+            "phasePosition": "string",
+            "maxAmplitude": "float64"},
+        "TRP": {
+            "tag": "string", "timestamp": "int64",
+            "trackPoint": "string",
+            "trackPointTimestamp": "int64",
+            "strokes": "int32",
+            "leftRightBalance": "float64",
+            "distance": "float64",
+            "latitude": "float64",
+            "longitude": "float64",
+            "speed": "float64",
+            "heartRate": "int32",
+            "cadence": "int32",
+            "power": "int32",
+            "active": "bool"},
     }
 
-    TARGET_TAGS = ["ACT", "SCY", "AMD"]
-    return TAG_COLUMNS, TARGET_TAGS, csv, defaultdict, io, mo, np, pd, plt
+    TAG_COLUMNS = {
+        tag: list(dtypes.keys())
+        for tag, dtypes in TAG_DTYPES.items()
+    }
+
+    TARGET_TAGS = ["ACT", "AMD", "SCY", "TRP"]
+    return (
+        TAG_COLUMNS,
+        TAG_DTYPES,
+        TARGET_TAGS,
+        clean_for_dtypes,
+        csv,
+        defaultdict,
+        io,
+        mo,
+        np,
+        pd,
+        plt,
+    )
 
 
 if __name__ == "__main__":
