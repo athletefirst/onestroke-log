@@ -32,12 +32,45 @@ def _(mo):
 
 
 @app.cell
-def _(file_area, mo):
+def _(io, os, zipfile):
+    def extract_text_stream(file_area):
+        file = file_area.value[0]
+        filename = file.name
+        ext = os.path.splitext(filename)[1].lower()
+
+        file_bytes = file_area.contents()
+    
+        if ext == ".zip":
+            # zip file
+            zip_file = zipfile.ZipFile(io.BytesIO(file_bytes))
+            txt_files = [name for name in zip_file.namelist() if name.endswith(".txt")]
+            if not txt_files:
+                return ""
+            else:
+                first_txt = txt_files[0]
+                with zip_file.open(first_txt) as f:
+                    content = f.read().decode("utf-8", errors="replace")
+                return io.StringIO(content)
+        else:
+            # txt file
+            content = file_bytes.decode("utf-8", errors="replace")
+            return io.StringIO(content)
+
+    return (extract_text_stream,)
+
+
+@app.cell
+def _(file_area, mo, os):
     mo.stop(not file_area.value, mo.md("Upload the log file."))
+
+    file = file_area.value[0]
+    filename = file.name
+    ext = os.path.splitext(filename)[1].lower()
 
     mo.vstack([
         file_area.value,
-        file_area.name()
+        file_area.name(),
+        ext
     ])
     return
 
@@ -50,16 +83,15 @@ def _(
     clean_for_dtypes,
     csv,
     defaultdict,
+    extract_text_stream,
     file_area,
-    io,
     mo,
     np,
     pd,
 ):
     mo.stop(not file_area.value, mo.md("Upload the log file."))
 
-    file_bytes = file_area.contents()
-    text = io.StringIO(file_bytes.decode("utf-8"))
+    text = extract_text_stream(file_area)
     reader = csv.reader(text)
 
     timestamps_set = set()
@@ -78,7 +110,7 @@ def _(
     dfs = {}
     for tag, rows in grouped.items():
         df = pd.DataFrame(rows)
-    
+
         if tag in TAG_COLUMNS:
             df.columns = TAG_COLUMNS[tag][:df.shape[1]]
 
@@ -156,15 +188,12 @@ def _(dfs, mo, plt, start_slider, timestamps_ns, width_slider):
 
 @app.cell
 def _():
-    return
-
-
-@app.cell
-def _():
     import marimo as mo
     import pandas as pd
+    import os
     import io
     import csv
+    import zipfile
     from collections import defaultdict
     import numpy as np
     import matplotlib.pyplot as plt
@@ -180,7 +209,7 @@ def _():
         for col, dtype in dtypes.items():
             if col not in df.columns:
                 continue
-        
+
             df[col] = df[col].replace("", np.nan)
 
             # --- float ---
@@ -190,7 +219,7 @@ def _():
             # --- int ---
             elif dtype.startswith("int"):
                 df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-            
+
             # --- bool ---
             elif dtype == "bool":
                 df[col] = df[col].map({"true": True, "false": False, True: True, False: False})
@@ -260,8 +289,10 @@ def _():
         io,
         mo,
         np,
+        os,
         pd,
         plt,
+        zipfile,
     )
 
 
