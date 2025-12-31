@@ -39,7 +39,7 @@ def _(io, os, zipfile):
         ext = os.path.splitext(filename)[1].lower()
 
         file_bytes = file_area.contents()
-    
+
         if ext == ".zip":
             # zip file
             zip_file = zipfile.ZipFile(io.BytesIO(file_bytes))
@@ -55,7 +55,6 @@ def _(io, os, zipfile):
             # txt file
             content = file_bytes.decode("utf-8", errors="replace")
             return io.StringIO(content)
-
     return (extract_text_stream,)
 
 
@@ -128,7 +127,7 @@ def _(dfs, mo, timestamps_ns):
         timestamps_ns.min(),
         timestamps_ns.max(),
        int( (timestamps_ns.max()-timestamps_ns.min())/1000000000/60 ),
-        dfs["AMD"]
+        dfs["TRP"]
     ])
     return
 
@@ -233,13 +232,18 @@ def _():
     TAG_DTYPES = {
         "ACT": {
             "tag": "string", "timestamp": "int64",
+            "schemaVersionName": "string",
+            "appVersionName": "string",
+            "appVersionCode": "int64",
+            "activityId": "string",
             "startTimeMillis": "int64",
-            "activityName": "string"
+            "activityName": "string",
+            "userName": "string",
         },
         "DBG": {
             "tag": "string", "timestamp": "int64",
             "dbgTag": "string",
-            "strings": "string"
+            "strings": "string",
         },
         "AMD": {
             "tag": "string", "timestamp": "int64",
@@ -251,12 +255,13 @@ def _():
             "qy": "float64",
             "qz": "float64",
             "aCounter": "int64",
-            "qCounter": "int64"
+            "qCounter": "int64",
         },
         "SCY": {
             "tag": "string", "timestamp": "int64",
             "phasePosition": "string",
-            "maxAmplitude": "float64"},
+            "maxAmplitude": "float64",
+        },
         "TRP": {
             "tag": "string", "timestamp": "int64",
             "trackPoint": "string",
@@ -270,7 +275,8 @@ def _():
             "heartRate": "int32",
             "cadence": "int32",
             "power": "int32",
-            "active": "bool"},
+            "active": "bool",
+        },
     }
 
     TAG_COLUMNS = {
@@ -278,7 +284,7 @@ def _():
         for tag, dtypes in TAG_DTYPES.items()
     }
 
-    TARGET_TAGS = ["ACT", "AMD", "SCY", "TRP"]
+    TARGET_TAGS = ["ACT", "AMD", "SCY", "TRP",]
     return (
         TAG_COLUMNS,
         TAG_DTYPES,
